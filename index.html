@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InmunoMaster 2026 - PNI Chile</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- POOL DE CASOS CLÍNICOS (Basado estrictamente en el PDF PNI 2026) ---
+        const MASTER_POOL = [
+            {
+                id: 1,
+                q: "¿Qué vacunas se administran exclusivamente al Recién Nacido según el PNI 2026?",
+                options: ["BCG y Hepatitis B", "BCG y Hexavalente", "Hepatitis B y Neumocócica", "BCG y VRS"],
+                correct: 0,
+                feedback: "La BCG (Tuberculosis) y la Hepatitis B son dosis únicas al nacer.",
+                fact: "Fisiopatología: La BCG previene formas invasoras (miliar/meníngea) porque el sistema inmune neonatal no puede contener al bacilo solo.",
+                cat: "RN"
+            },
+            {
+                id: 2,
+                q: "Lactante de 2 meses. ¿Cuáles son los 3 componentes que inician su esquema primario hoy?",
+                options: ["Hexavalente, Neumo 13V y Meningocócica B", "Hexavalente, Neumo 13V y Hepatitis A", "SRP, Varicela y Neumo 13V", "Hexavalente, Meningocócica Tetravalente y MenB"],
+                correct: 0,
+                feedback: "A los 2 meses se inicia Hexavalente (1ª), Neumo 13V (1ª) y MenB (1ª).",
+                fact: "Mnemotecnia: A los 2 y 4 meses son los mismos 3 'pokes'.",
+                cat: "Lactante"
+            },
+            {
+                id: 3,
+                q: "Un lactante prematuro asiste a su control de los 6 meses. ¿Qué diferencia tiene su calendario con un niño de término?",
+                options: ["Recibe la 3ª dosis de Neumo 13V", "Recibe la 1ª dosis de SRP", "No recibe la Hexavalente", "Recibe refuerzo de Hepatitis A"],
+                correct: 0,
+                feedback: "Solo los prematuros reciben la 3ª dosis de Neumo 13V a los 6 meses. Los de término pasan directo de la 2ª (4m) al refuerzo (12m).",
+                fact: "Fisiología: El prematuro tiene menos anticuerpos maternos transferidos por placenta, por lo que necesita un esquema '3+1' en lugar del '2+1' estándar.",
+                cat: "Lactante"
+            },
+            {
+                id: 4,
+                q: "Control de los 12 meses. ¿Qué vacunas de virus vivos atenuados debutan en este hito?",
+                options: ["SRP y Varicela", "Hexavalente y MenB", "Neumo 13V y Men Tetravalente", "Hepatitis A y Varicela"],
+                correct: 0,
+                feedback: "A los 12 meses se inicia la 1ª dosis de SRP y Varicela.",
+                fact: "Dato Inmuno: No se dan antes porque los anticuerpos de la madre aún circulantes podrían inactivar el virus de la vacuna.",
+                cat: "12 Meses"
+            },
+            {
+                id: 5,
+                q: "Según el calendario 2026, ¿a qué edad se administra la 2ª dosis de SRP (Sarampión, Rubeola, Parotiditis)?",
+                options: ["36 meses", "18 meses", "1º Básico", "12 meses"],
+                correct: 0,
+                feedback: "En el nuevo calendario 2026, la 2ª dosis de SRP se movió a los 36 meses.",
+                fact: "Cambio PNI: Antes se daba en 1º básico, ahora buscamos proteger antes del ingreso masivo a jardines infantiles.",
+                cat: "36 Meses"
+            },
+            {
+                id: 6,
+                q: "Lactante de 18 meses. ¿Cuál es la única vacuna que se administra como dosis ÚNICA en este hito?",
+                options: ["Hepatitis A", "Varicela", "Meningocócica Tetravalente", "Hexavalente"],
+                correct: 0,
+                feedback: "A los 18 meses la Hepatitis A es dosis única.",
+                fact: "Salud Pública: Chile es uno de los pocos países con dosis única de HepA con alta tasa de éxito epidemiológico.",
+                cat: "18 Meses"
+            },
+            {
+                id: 7,
+                q: "Sobre el Virus Respiratorio Sincicial (VRS): ¿A quiénes se les administra el Anticuerpo Monoclonal Nirsevimab?",
+                options: ["Nacidos a partir del 01 de octubre de 2025", "Solo a prematuros de menos de 32 semanas", "A todos los niños de 12 meses", "A escolares de 1º básico"],
+                correct: 0,
+                feedback: "El Nirsevimab es para nacidos desde el 1 de octubre de 2025 para la temporada de alta circulación.",
+                fact: "Dato Clave: No es una vacuna, es inmunidad PASIVA. Das los anticuerpos listos para que el virus no cause bronquiolitis grave.",
+                cat: "Campañas"
+            },
+            {
+                id: 8,
+                q: "¿Qué vacuna le corresponde a un escolar de 4º Básico?",
+                options: ["1ª dosis de VPH", "Refuerzo de dTpa", "2ª dosis de SRP", "Hepatitis A"],
+                correct: 0,
+                feedback: "En 4º Básico se administra la 1ª dosis de VPH (Virus Papiloma Humano).",
+                fact: "Prevención: Se busca inmunizar antes del inicio de la vida sexual para prevenir cánceres asociados al virus.",
+                cat: "Escolar"
+            },
+            {
+                id: 9,
+                q: "Embarazada de 30 semanas. ¿Qué vacuna debe recibir para proteger a su futuro hijo de la Tos Convulsiva?",
+                options: ["dTpa (acelular)", "Hexavalente", "Influenza solamente", "Hepatitis B"],
+                correct: 0,
+                feedback: "Desde la semana 28 de gestación se administra la dTpa.",
+                fact: "Transferencia: La madre fabrica IgG y la pasa por la placenta. El bebé nace con escudo hasta sus vacunas de los 2 meses.",
+                cat: "Gestante"
+            },
+            {
+                id: 10,
+                q: "Paciente de 67 años asiste a vacunatorio. ¿Qué vacuna le corresponde para prevenir neumonías graves por S. pneumoniae?",
+                options: ["Neumocócica Polisacárida 23V", "Neumocócica Conjugada 13V", "dTpa", "Solo Influenza"],
+                correct: 0,
+                feedback: "A los 65 años (o más) corresponde la dosis única de Neumo 23V.",
+                fact: "Diferencia: La 23V cubre más serotipos pero no genera memoria T tan robusta como las conjugadas, por eso se reserva para adultos.",
+                cat: "Adulto"
+            },
+            {
+                id: 11,
+                q: "Niño de 36 meses. Según el PDF 2026, ¿qué vacunas debe recibir hoy?",
+                options: ["2ª dosis SRP y 2ª dosis Varicela", "Refuerzo Hexavalente y HepA", "Solo Neumo 13V", "SRP y dTpa"],
+                correct: 0,
+                feedback: "A los 36 meses (3 años) corresponden las segundas dosis de SRP y Varicela.",
+                fact: "Consolidación: Con esto se cierra el esquema de inmunidad contra virus eruptivos de la infancia.",
+                cat: "36 Meses"
+            },
+            {
+                id: 12,
+                q: "¿En qué cursos escolares se administra el refuerzo de dTpa (Difteria, Tétanos, Tos Convulsiva)?",
+                options: ["1º y 8º Básico", "4º y 5º Básico", "Solo en 1º Básico", "Solo en 8º Básico"],
+                correct: 0,
+                feedback: "La dTpa se aplica en 1º y 8º básico como refuerzo de la inmunidad bacteriana.",
+                fact: "Efecto Capullo: Vacunar escolares evita que ellos transmitan Tos Convulsiva a lactantes menores en casa.",
+                cat: "Escolar"
+            }
+            // ... (Se pueden agregar más casos siguiendo este formato hasta superar los 100)
+        ];
+
+        function App() {
+            const [view, setView] = useState('start');
+            const [questions, setQuestions] = useState([]);
+            const [currentIdx, setCurrentIdx] = useState(0);
+            const [selected, setSelected] = useState(null);
+            const [showFeedback, setShowFeedback] = useState(false);
+            const [score, setScore] = useState(0);
+
+            const startSession = () => {
+                const shuffled = [...MASTER_POOL].sort(() => 0.5 - Math.random()).slice(0, 10);
+                setQuestions(shuffled);
+                setCurrentIdx(0);
+                setScore(0);
+                setSelected(null);
+                setShowFeedback(false);
+                setView('quiz');
+            };
+
+            const handleSelect = (idx) => {
+                if (showFeedback) return;
+                setSelected(idx);
+                setShowFeedback(true);
+                if (idx === questions[currentIdx].correct) setScore(s => s + 1);
+            };
+
+            const next = () => {
+                if (currentIdx < 9) {
+                    setCurrentIdx(c => c + 1);
+                    setSelected(null);
+                    setShowFeedback(false);
+                } else {
+                    setView('end');
+                }
+            };
+
+            if (view === 'start') return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-blue-50">
+                    <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-blue-100 mb-8 max-w-sm">
+                        <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg rotate-3">
+                            <span className="text-4xl">💉</span>
+                        </div>
+                        <h1 className="text-3xl font-black text-slate-900 mb-2">InmunoMaster 2026</h1>
+                        <p className="text-slate-500 font-medium text-sm px-4">Actualizado al calendario PNI 2026 (Chile). 10 casos por sesión.</p>
+                    </div>
+                    <button onClick={startSession} className="w-full max-w-xs bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 rounded-2xl shadow-xl transition-all active:scale-95 uppercase tracking-widest text-sm">Iniciar Evaluación</button>
+                </div>
+            );
+
+            if (view === 'end') return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-slate-50">
+                    <div className="text-6xl mb-6">🏥</div>
+                    <h2 className="text-3xl font-black text-slate-900 mb-2">Sesión Finalizada</h2>
+                    <p className="text-slate-500 mb-8">Nivel de acierto en el PNI 2026:</p>
+                    <div className="text-7xl font-black text-blue-600 mb-10">{score} / 10</div>
+                    <button onClick={startSession} className="w-full max-w-xs bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg mb-4">NUEVA SESIÓN</button>
+                    <button onClick={() => setView('start')} className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Volver al inicio</button>
+                </div>
+            );
+
+            const q = questions[currentIdx];
+
+            return (
+                <div className="max-w-2xl mx-auto p-4 md:p-8 min-h-screen">
+                    <div className="flex justify-between items-center mb-8">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paciente {currentIdx + 1} de 10</span>
+                        <span className="bg-blue-100 text-blue-700 text-[10px] font-black px-3 py-1 rounded-full uppercase">{q.cat}</span>
+                    </div>
+
+                    <div className="bg-white rounded-[2rem] shadow-xl border border-slate-100 p-6 md:p-10 mb-6">
+                        <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight mb-8">{q.q}</h2>
+                        <div className="space-y-3">
+                            {q.options.map((opt, i) => (
+                                <button 
+                                    key={i} 
+                                    onClick={() => handleSelect(i)}
+                                    disabled={showFeedback}
+                                    className={`w-full text-left p-5 rounded-2xl border-2 font-bold text-sm transition-all flex items-center justify-between ${
+                                        showFeedback 
+                                            ? i === q.correct ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : (selected === i ? 'border-rose-500 bg-rose-50 text-rose-900' : 'opacity-40 border-slate-50')
+                                            : 'border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 text-slate-700'
+                                    }`}
+                                >
+                                    {opt}
+                                    {showFeedback && i === q.correct && <svg className="w-6 h-6 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"></path></svg>}
+                                    {showFeedback && selected === i && i !== q.correct && <svg className="w-6 h-6 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"></path></svg>}
+                                </button>
+                            ))}
+                        </div>
+
+                        {showFeedback && (
+                            <div className="mt-8 space-y-4 animate-in fade-in slide-in-from-bottom-4">
+                                <div className="bg-blue-600 text-white p-6 rounded-2xl shadow-lg shadow-blue-100">
+                                    <p className="text-[10px] font-black uppercase opacity-60 mb-1">Feedback PNI</p>
+                                    <p className="font-medium text-sm leading-relaxed">{q.feedback}</p>
+                                </div>
+                                <div className="bg-amber-50 border border-amber-100 p-6 rounded-2xl">
+                                    <p className="text-[10px] font-black uppercase text-amber-600 mb-1">Contexto Clínico / Mnemotecnia</p>
+                                    <p className="text-sm text-amber-900 italic font-medium leading-relaxed">"{q.fact}"</p>
+                                </div>
+                                <button onClick={next} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 hover:bg-blue-900 transition-colors">
+                                    {currentIdx === 9 ? 'Ver Resultados' : 'Siguiente Caso'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
